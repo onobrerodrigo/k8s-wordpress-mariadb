@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: onobrerodrigo
+
+---    
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mariadb-configmap
+  namespace: onobrerodrigo
+data:
+  MARIADB_ROOT_PASSWORD: 'c2VjcmV0'
+  MARIADB_DATABASE: 'wordpress'
+  MARIADB_USER: 'wordpress'
+  MARIADB_PASSWORD: 'c2VjcmV0'
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb-service
+  namespace: onobrerodrigo
+spec:
+  selector:
+    app: mariadb-service-onobrerodrigo
+  ports:
+    - name: mariadb-port
+      protocol: TCP
+      port: 3306
+      targetPort: 3306
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mariadb
+  namespace: onobrerodrigo
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mariadb
+      app.kubernetes.io/instance: mariadb
+      app.kubernetes.io/version: "10.9.4"
+      app.kubernetes.io/component: database
+      app.kubernetes.io/part-of: wordpress
+  serviceName: mariadb-service
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mariadb
+        app.kubernetes.io/instance: mariadb
+        app.kubernetes.io/version: "10.9.4"
+        app.kubernetes.io/component: database
+        app.kubernetes.io/part-of: wordpress
+    spec:
+      terminationGracePeriodSeconds: 30
+      restartPolicy: Always
+      containers:
+      - name: mariadb
+        image: mariadb:10.9.4
+        imagePullPolicy: IfNotPresent
+        envFrom:
+          - configMapRef:
+              name: mariadb-configmap
+        ports:
+        - name: mariadb-port
+          containerPort: 3306
+          protocol: TCP
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 100m
+          limits:
+            memory: 512Mi
+        volumeMounts:
+        - name: mariadb-data
+          mountPath: /var/lib/mysql/
+  volumeClaimTemplates:
+  - metadata:
+      name: mariadb-data
+    spec:
+      storageClassName: local-path
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
