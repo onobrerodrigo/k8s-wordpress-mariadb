@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: onobrerodrigo
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wordpress-configmap
+  namespace: onobrerodrigo
+data:
+  WORDPRESS_DB_HOST: 'mariadb-service.onobrerodrigo.svc.cluster.local'
+  WORDPRESS_DB_PASSWORD: 'c2VjcmV0'
+  WORDPRESS_DB_USER: 'wordpress'
+  WORDPRESS_DB_NAME: 'wordpress'
+  WORDPRESS_DEBUG: '1'
+
+  
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress-service
+  namespace: peqi
+spec:
+  selector:
+    app: wordpress-service-onobrerodrigo
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP 
+  type: ClusterIP
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress
+  namespace: peqi
+  labels:
+    app.kubernetes.io/name: wordpress
+    app.kubernetes.io/instance: wordpress
+    app.kubernetes.io/version: "php7.4-fpm"
+    app.kubernetes.io/part-of: wordpress
+spec:
+  progressDeadlineSeconds: 600
+  revisionHistoryLimit: 10
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: wordpress
+      app.kubernetes.io/instance: wordpress
+      app.kubernetes.io/version: "php7.4-fpm"
+      app.kubernetes.io/part-of: wordpress
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: wordpress
+        app.kubernetes.io/instance: wordpress
+        app.kubernetes.io/version: "latest"
+        app.kubernetes.io/part-of: wordpress
+    spec:
+      terminationGracePeriodSeconds: 30
+      restartPolicy: Always
+      dnsPolicy: ClusterFirst
+      containers:
+      - name: wordpress
+        image: wordpress:php7.4-fpm
+        imagePullPolicy: IfNotPresent
+        envFrom:
+          - configMapRef:
+              name: wordpress-configmap
+        ports:
+        - name: http
+          containerPort: 80
+        resources:
+          limits:
+            memory: 256Mi
+          requests:
+            memory: 128Mi
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wordpress-ingress
+  namespace: onobrerodrigo
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+  - host: onobrerodrigo.tech
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: wordpress-service
+            port:
+              name: http
