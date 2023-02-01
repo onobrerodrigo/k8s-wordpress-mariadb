@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb-service
+spec:
+  selector:
+    app: mariadb-onobrerodrigo
+  ports:
+    - protocol: TCP
+      port: 3306
+      targetPort: 3306
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb-onobrerodrigo
+  template:
+    metadata:
+      labels:
+        app: mariadb-onobrerodrigo
+    spec:
+      containers:
+      - name: mariadb-onobrerodrigo
+        image: mariadb
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MARIADB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mariadb-secret-onobrerodrigo
+              key: mariadb-root-password
+        - name: MARIADB_DATABASE
+          value: wordpress
