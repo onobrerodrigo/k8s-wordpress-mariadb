@@ -1,2 +1,2 @@
-# k8s-wordpress-mariadb
-Site com Wordpress e MariaDB
+# onobrerodrigo-k8s
+This repository contains the information and deployment files for creating a wordpress with mariadb using k8s.
